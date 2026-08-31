@@ -1,0 +1,20 @@
+# Dependencias y artefactos de compilacion
+apps/api/vendor/
+apps/web/node_modules/
+apps/web/dist/
+apps/api/public/build/
+
+# Configuracion local y secretos
+.env
+.env.*
+!*.env.example
+apps/api/.env
+apps/web/.env.local
+
+# Archivos generados por herramientas
+*.log
+*.sqlite
+.phpunit.result.cache
+.idea/
+.vscode/
+Thumbs.db
