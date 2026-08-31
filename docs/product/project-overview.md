@@ -711,7 +711,7 @@ Ejemplo local:
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=pizzeria_db
+DB_DATABASE=pizzeria_saas
 DB_USERNAME=pizzeria_user
 DB_PASSWORD=pizzeria_password
 ```

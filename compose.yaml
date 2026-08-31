@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
 
     environment:
-      POSTGRES_DB: pizzeria_db
+      POSTGRES_DB: pizzeria_saas
       POSTGRES_USER: pizzeria_user
       POSTGRES_PASSWORD: pizzeria_password
 
