@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withSingletons([
-        \App\Support\Tenancy\EmpresaContext::class => \App\Support\Tenancy\EmpresaContext::class,
+        \App\Support\Tenancy\CompanyContext::class => \App\Support\Tenancy\CompanyContext::class,
     ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias(['empresa' => \App\Http\Middleware\SetEmpresaContext::class]);
+        $middleware->alias(['company' => \App\Http\Middleware\SetCompanyContext::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

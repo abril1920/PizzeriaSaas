@@ -11,29 +11,29 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('empresas', function (Blueprint $table) {
+        Schema::create('companies', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('nombre', 150);
-            $table->string('nit', 40)->unique();
-            $table->string('moneda', 3)->default('COP');
-            $table->string('zona_horaria', 80)->default('America/Bogota');
-            $table->string('estado', 20)->default('ACTIVA');
-            $table->jsonb('configuracion')->default('{}');
+            $table->string('name', 150);
+            $table->string('tax_id', 40)->unique();
+            $table->string('currency', 3)->default('COP');
+            $table->string('timezone', 80)->default('America/Bogota');
+            $table->string('status', 20)->default('ACTIVE');
+            $table->jsonb('settings')->default('{}');
             $table->timestamps();
         });
 
-        Schema::create('usuarios', function (Blueprint $table) {
+        Schema::create('users', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('empresa_id')->constrained('empresas')->cascadeOnDelete();
-            $table->string('nombre', 100);
-            $table->string('apellido', 100)->nullable();
-            $table->string('correo', 160);
+            $table->foreignUuid('company_id')->constrained('companies')->cascadeOnDelete();
+            $table->string('first_name', 100);
+            $table->string('last_name', 100)->nullable();
+            $table->string('email', 160);
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->string('estado', 20)->default('ACTIVO');
+            $table->string('status', 20)->default('ACTIVE');
             $table->rememberToken();
             $table->timestamps();
-            $table->unique(['empresa_id', 'correo']);
+            $table->unique(['company_id', 'email']);
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
@@ -57,8 +57,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('usuarios');
-        Schema::dropIfExists('empresas');
+        Schema::dropIfExists('users');
+        Schema::dropIfExists('companies');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
     }

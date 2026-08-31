@@ -4,7 +4,7 @@
 
 El producto se construirá como un **monolito modular**: una API REST en Laravel y una SPA independiente en React. Esta decisión mantiene el despliegue y el desarrollo inicial simples, sin impedir separar servicios en el futuro cuando exista una necesidad real de escala.
 
-PostgreSQL será una única base de datos compartida. El aislamiento multiempresa se implementará con una columna `empresa_id` en los datos operativos y se impondrá en todas las capas de la aplicación.
+PostgreSQL será una única base de datos compartida. El aislamiento multiempresa se implementará con una columna `company_id` en los datos operativos y se impondrá en todas las capas de la aplicación.
 
 ```text
 Navegador
@@ -29,11 +29,13 @@ PizzeriaSaas/
 |-- apps/
 |   |-- api/                         # Aplicacion Laravel
 |   |   |-- app/
-|   |   |   |-- Domain/              # Reglas de negocio por modulo
-|   |   |   |-- Http/Controllers/Api/# Adaptadores HTTP delgados
-|   |   |   |-- Http/Requests/       # Validacion de entradas
-|   |   |   |-- Models/              # Modelos Eloquent
-|   |   |   |   `-- Support/Tenancy/ # Contexto y alcance de empresa
+|   |   |   |-- Modules/
+|   |   |   |   |-- Identity/        # Registro, sesion y usuarios
+|   |   |   |   |-- Catalog/         # Productos y categorias
+|   |   |   |   |   `-- .../         # Modulos futuros de negocio
+|   |   |   |-- Models/              # Modelos Eloquent de persistencia
+|   |   |   |-- Support/Tenancy/     # Contexto y alcance de empresa
+|   |   |   `-- Providers/          # Enlaces de contratos e implementaciones
 |   |   |-- database/migrations/     # Fuente de verdad evolutiva
 |   |   |-- database/seeders/
 |   |   `-- tests/Feature/ y tests/Unit/
@@ -75,9 +77,11 @@ Cada endpoint sigue este flujo:
 
 ```text
 Ruta -> middleware auth:sanctum -> resolver empresa -> permiso/policy
-     -> Form Request -> Controller -> Action o Service -> Modelo/Repositorio
+     -> Form Request -> Controller -> Caso de uso -> Repositorio -> Mapper -> Eloquent
      -> API Resource -> respuesta JSON
 ```
+
+Cada modulo contiene las capas `Http`, `Application`, `Domain` e `Infrastructure`. Los modelos Eloquent viven fuera de los modulos, pero solo los repositorios de `Infrastructure` pueden usarlos directamente. El detalle y la convencion se documentan en `apps/api/app/Modules/README.md`.
 
 - Los controladores reciben la solicitud, delegan el caso de uso y devuelven recursos JSON; no contienen reglas de negocio ni SQL.
 - Los Form Requests validan formato, campos permitidos y relaciones. Las reglas de pertenencia a la empresa se validan en el servidor.
@@ -88,17 +92,17 @@ Ruta -> middleware auth:sanctum -> resolver empresa -> permiso/policy
 
 ### Contexto de empresa y aislamiento
 
-`EmpresaContext` se crea despues de autenticar al usuario y obtiene el identificador desde `auth()->user()->empresa_id`. El frontend no envia ni puede cambiar este valor.
+`CompanyContext` se crea despues de autenticar al usuario y obtiene el identificador desde `auth()->user()->company_id`. El frontend no envia ni puede cambiar este valor.
 
-Los modelos que pertenecen a una empresa implementaran un contrato o trait `BelongsToEmpresa`. El trait aplica un Global Scope por `empresa_id` y rellena el campo al crear registros. Esto reduce errores accidentales, pero no reemplaza la validacion explicita de relaciones.
+Los modelos que pertenecen a una empresa implementaran un contrato o trait `BelongsToCompany`. El trait aplica un Global Scope por `company_id` y rellena el campo al crear registros. Esto reduce errores accidentales, pero no reemplaza la validacion explicita de relaciones.
 
 Reglas obligatorias:
 
-- Toda consulta operativa se inicia ya acotada al `EmpresaContext`.
-- Los route model bindings de recursos multiempresa deben buscar usando `empresa_id` y devolver `404` si el recurso no pertenece a la empresa actual.
+- Toda consulta operativa se inicia ya acotada al `CompanyContext`.
+- Los route model bindings de recursos multiempresa deben buscar usando `company_id` y devolver `404` si el recurso no pertenece a la empresa actual.
 - Una relacion como producto-categoria, pedido-cliente o receta-producto-ingrediente debe comprobar que ambos extremos pertenecen a la misma empresa.
-- Ningun endpoint acepta `empresa_id` en su body o query string, salvo las funciones futuras y aisladas del superadministrador SaaS.
-- Se deben crear restricciones compuestas en las migraciones, o triggers equivalentes, para impedir relaciones cruzadas. Las FK simples actuales validan que el ID exista, pero no que comparta `empresa_id`.
+- Ningun endpoint acepta `company_id` en su body o query string, salvo las funciones futuras y aisladas del superadministrador SaaS.
+- Se deben crear restricciones compuestas en las migraciones, o triggers equivalentes, para impedir relaciones cruzadas. Las FK simples actuales validan que el ID exista, pero no que comparta `company_id`.
 - Como defensa adicional posterior se evaluara Row Level Security (RLS) en PostgreSQL, una vez que la conexion pueda establecer el tenant de forma segura por solicitud.
 
 ### Contrato API
@@ -122,7 +126,7 @@ React se organiza por funcionalidad, no por tipo tecnico global. Cada carpeta en
 
 `AuthProvider` mantiene la sesion y los permisos devueltos por `GET /api/v1/me`. Un componente de ruta protegida exige autenticacion y otro exige el permiso requerido. Estas validaciones mejoran la experiencia, pero la autorizacion definitiva siempre esta en Laravel.
 
-El cliente HTTP centraliza URL base, credenciales/token, tratamiento de `401` y normalizacion de errores. Ningun componente conoce ni manipula `empresa_id`.
+El cliente HTTP centraliza URL base, credenciales/token, tratamiento de `401` y normalizacion de errores. Ningun componente conoce ni manipula `company_id`.
 
 ## 6. Flujos transaccionales
 
@@ -148,7 +152,7 @@ Si cualquiera de los pasos falla, se revierte toda la operacion. El bloqueo de e
 - Detalles de pedido y venta conservan nombre y precio del producto para mantener el historial.
 - Los estados se representaran con PHP Enums y se validaran sus transiciones en el dominio: `pending -> preparing -> ready -> delivered`, con `cancelled` segun reglas definidas.
 - Usuarios, productos, clientes e ingredientes utilizaran eliminacion logica cuando el historial deba preservarse. Las ventas, pagos y movimientos de inventario no se eliminan.
-- Las entidades operativas incluiran `created_at`, `updated_at`, `created_by` y `updated_by` cuando aplique. Las migraciones adaptaran los nombres actuales en espanol o configuraran los timestamps de Eloquent de manera coherente; no se mezclaran ambas convenciones sin una decision explicita.
+- Las entidades operativas incluiran `created_at`, `updated_at`, `created_by` y `updated_by` cuando aplique. La persistencia usa nombres en ingles y los timestamps nativos de Eloquent.
 
 ## 8. Seguridad y observabilidad
 
@@ -170,7 +174,7 @@ Las pruebas Feature cubren autenticacion, permisos, aislamiento de empresas, con
 ## 10. Orden de implementacion
 
 1. Inicializar Laravel, React, configuracion local y migraciones a partir del modelo actual.
-2. Implementar autenticacion, `EmpresaContext`, roles, permisos y pruebas de aislamiento.
+2. Implementar autenticacion, `CompanyContext`, roles, permisos y pruebas de aislamiento.
 3. Construir catalogo, ingredientes, existencias y movimientos manuales.
 4. Incorporar clientes y pedidos con transiciones de estado.
 5. Implementar ventas, pagos, recetas y descuento transaccional de inventario.
