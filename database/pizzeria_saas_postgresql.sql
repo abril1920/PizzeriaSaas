@@ -368,7 +368,7 @@ INSERT INTO permisos (codigo, descripcion) VALUES
 ('ventas.registrar', 'Registrar ventas y pagos'),
 ('reportes.ver', 'Consultar reportes'),
 ('empresa.configurar', 'Modificar configuración de empresa')
-ON CONFLICT (codigo) DO NOTHING;
+ON CONFLICT (codigo) DO NOTHING;    
 
 -- ============================================================
 -- NOTAS DE IMPLEMENTACIÓN

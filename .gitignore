@@ -3,6 +3,7 @@ apps/api/vendor/
 apps/web/node_modules/
 apps/web/dist/
 apps/api/public/build/
+.tools/
 
 # Configuracion local y secretos
 .env
